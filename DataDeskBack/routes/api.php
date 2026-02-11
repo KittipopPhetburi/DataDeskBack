@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/tickets/tracking/{serialNumber}', [TicketController::class, 'tracking']);
+Route::get('/assets/search/{serialNumber}', [AssetController::class, 'search']);
 
 // Test DB Connection
 Route::get('/_test_db', function () {

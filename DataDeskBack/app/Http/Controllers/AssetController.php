@@ -28,6 +28,21 @@ class AssetController extends Controller
         return response()->json($query->orderBy('created_at', 'desc')->get());
     }
 
+    // Public search by Serial Number
+    public function search($serialNumber)
+    {
+        $asset = Asset::with(['company', 'branch', 'responsibleUser'])
+            ->where('serial_number', $serialNumber)
+            ->orWhere('asset_code', $serialNumber)
+            ->first();
+
+        if (!$asset) {
+            return response()->json(['message' => 'ไม่พบข้อมูลทรัพย์สิน'], 404);
+        }
+
+        return response()->json($asset);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
