@@ -31,7 +31,7 @@ class AssetController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'asset_code' => 'required|string',
+            'asset_code' => 'required|string|unique:assets,asset_code',
             'serial_number' => 'required|string',
             'type' => 'required|string',
             'brand' => 'required|string',
@@ -41,6 +41,8 @@ class AssetController extends Controller
             'company_id' => 'required|string',
             'branch_id' => 'required|string',
             'responsible' => 'required',
+        ], [
+            'asset_code.unique' => 'เลขครุภัณฑ์นี้มีอยู่ในระบบแล้ว',
         ]);
 
         $data = $request->all();
@@ -68,6 +70,11 @@ class AssetController extends Controller
     public function update(Request $request, string $id)
     {
         $asset = Asset::findOrFail($id);
+        $request->validate([
+            'asset_code' => 'sometimes|string|unique:assets,asset_code,' . $id,
+        ], [
+            'asset_code.unique' => 'เลขครุภัณฑ์นี้มีอยู่ในระบบแล้ว',
+        ]);
         $asset->update($request->all());
         return response()->json($asset);
     }

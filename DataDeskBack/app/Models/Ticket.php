@@ -13,7 +13,7 @@ class Ticket extends Model
 
     protected $fillable = [
         'id', 'title', 'description', 'asset_id', 'priority', 'status',
-        'created_by', 'assigned_to', 'company_id', 'branch_id',
+        'created_by', 'assigned_to', 'approved_by', 'closed_by', 'company_id', 'branch_id',
         'attachments', 'resolution', 'phone_number', 'device_location',
         'ip_address', 'repair_cost', 'replaced_part_name',
         'replaced_part_serial_number', 'replaced_part_brand', 'replaced_part_model',
@@ -45,6 +45,16 @@ class Ticket extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function closer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by');
     }
 
     public function company(): BelongsTo

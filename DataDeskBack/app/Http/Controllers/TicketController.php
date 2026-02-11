@@ -11,7 +11,7 @@ class TicketController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Ticket::with(['asset', 'creator', 'assignee', 'company', 'branch']);
+        $query = Ticket::with(['asset', 'creator', 'assignee', 'approver', 'closer', 'company', 'branch']);
 
         if ($user->role !== 'super_admin') {
             $query->where('company_id', $user->company_id);
@@ -69,12 +69,12 @@ class TicketController extends Controller
             'user_id' => $user->id,
         ]);
 
-        return response()->json($ticket->load(['asset', 'creator', 'assignee']), 201);
+        return response()->json($ticket->load(['asset', 'creator', 'assignee', 'approver', 'closer']), 201);
     }
 
     public function show(string $id)
     {
-        $ticket = Ticket::with(['asset', 'creator', 'assignee', 'company', 'branch', 'histories.user'])->findOrFail($id);
+        $ticket = Ticket::with(['asset', 'creator', 'assignee', 'approver', 'closer', 'company', 'branch', 'histories.user'])->findOrFail($id);
         return response()->json($ticket);
     }
 
@@ -104,11 +104,14 @@ class TicketController extends Controller
             ]);
 
             if ($request->status === 'closed') {
-                $ticket->update(['closed_at' => now()]);
+                $ticket->update(['closed_at' => now(), 'closed_by' => $user->id]);
             }
+
+            // Save who changed the status
+            $ticket->update(['approved_by' => $user->id]);
         }
 
-        return response()->json($ticket->load(['asset', 'creator', 'assignee']));
+        return response()->json($ticket->load(['asset', 'creator', 'assignee', 'approver', 'closer']));
     }
 
     public function destroy(string $id)
