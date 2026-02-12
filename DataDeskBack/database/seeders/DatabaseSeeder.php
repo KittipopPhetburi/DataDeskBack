@@ -103,6 +103,34 @@ class DatabaseSeeder extends Seeder
             'images' => ['ups-unit.jpg', 'ups-battery.jpg'],
         ]);
 
+        // Generate more assets
+        $assetTypes = ['Desktop Computer', 'Notebook', 'Printer', 'Scanner', 'Projector', 'Switch', 'Server', 'UPS'];
+        $brands = ['Dell', 'HP', 'Lenovo', 'Canon', 'Epson', 'Cisco', 'APC'];
+        $departments = ['IT', 'HR', 'Finance', 'Sales', 'Marketing', 'Operations'];
+        $locations = ['Room 101', 'Room 102', 'Room 201', 'Server Room', 'Meeting Room A', 'Meeting Room B'];
+
+        for ($i = 7; $i <= 57; $i++) {
+            $num = str_pad($i, 3, '0', STR_PAD_LEFT);
+            $type = $assetTypes[array_rand($assetTypes)];
+            Asset::create([
+                'id' => "A{$num}",
+                'asset_code' => "AS-{$num}",
+                'serial_number' => "SN" . rand(100000000, 999999999),
+                'type' => $type,
+                'brand' => $brands[array_rand($brands)],
+                'model' => "Model-" . rand(100, 999),
+                'start_date' => date('Y-m-d', strtotime('-' . rand(1, 1000) . ' days')),
+                'location' => $locations[array_rand($locations)],
+                'company_id' => 'C001',
+                'branch_id' => 'B001',
+                'responsible' => rand(2, 5),
+                'department' => $departments[array_rand($departments)],
+                'ip_address' => rand(0, 1) ? "192.168.1." . rand(10, 250) : null,
+                'diagram_file' => rand(0, 1) ? "diagram-{$num}.pdf" : null,
+                'images' => rand(0, 1) ? ["image1-{$num}.jpg", "image2-{$num}.jpg"] : null,
+            ]);
+        }
+
         // ============ ใบแจ้งซ่อม ============
         Ticket::create([
             'id' => 'T001', 'title' => 'คอมพิวเตอร์เปิดไม่ติด',
