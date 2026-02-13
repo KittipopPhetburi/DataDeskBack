@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Ticket;
 use App\Models\TicketHistory;
+use App\Models\User;
+use App\Models\SystemSetting;
+use App\Notifications\TicketCreatedNotification;
+use App\Notifications\TicketAssignedNotification;
+use App\Notifications\TicketStatusChangedNotification;
 use Illuminate\Http\Request;
 
 class TicketController extends Controller
@@ -15,6 +20,11 @@ class TicketController extends Controller
 
         if ($user->role !== 'super_admin') {
             $query->where('company_id', $user->company_id);
+
+            // Access Control: Filter by branch if user has strict branch
+            if ($user->branch_id) {
+                $query->where('branch_id', $user->branch_id);
+            }
         }
 
         if ($user->role === 'user') {
@@ -69,6 +79,42 @@ class TicketController extends Controller
             'user_id' => $user->id,
         ]);
 
+        // ส่ง Email แจ้งเตือน Admin/Helpdesk/Technician ของสาขาเดียวกัน + Super Admin
+        if ($this->isEmailNotificationEnabled()) {
+            // ส่งให้ Super Admin ทุกคน (ไม่จำกัดบริษัท/สาขา)
+            $superAdmins = User::where('role', 'super_admin')
+                ->whereNotNull('email')
+                ->get();
+
+            // ส่งให้ Admin/Helpdesk/Technician ที่อยู่สาขาเดียวกัน
+            $branchStaff = User::where('company_id', $ticket->company_id)
+                ->where('branch_id', $ticket->branch_id)
+                ->whereIn('role', ['admin', 'helpdesk', 'technician'])
+                ->whereNotNull('email')
+                ->get();
+
+            $recipients = $superAdmins->merge($branchStaff)->unique('id');
+
+            foreach ($recipients as $recipient) {
+                try {
+                    $recipient->notify(new TicketCreatedNotification($ticket));
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to send ticket created notification: ' . $e->getMessage());
+                }
+            }
+
+            // ส่ง Email แจ้งเตือนช่างประจำสาขา (ถ้ามี)
+            $branch = $ticket->branch;
+            if ($branch && $branch->technician_email) {
+                try {
+                    \Illuminate\Support\Facades\Notification::route('mail', $branch->technician_email)
+                        ->notify(new TicketCreatedNotification($ticket));
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to send ticket created notification to technician: ' . $e->getMessage());
+                }
+            }
+        }
+
         return response()->json($ticket->load(['asset', 'creator', 'assignee', 'approver', 'closer']), 201);
     }
 
@@ -84,6 +130,7 @@ class TicketController extends Controller
         $user = $request->user();
         $oldStatus = $ticket->status;
 
+        $oldAssignee = $ticket->assigned_to;
         $ticket->update($request->all());
 
         // ถ้าสถานะเปลี่ยน
@@ -109,6 +156,32 @@ class TicketController extends Controller
 
             // Save who changed the status
             $ticket->update(['approved_by' => $user->id]);
+
+            // ส่ง Email แจ้งผู้สร้าง Ticket
+            if ($this->isEmailNotificationEnabled()) {
+                $creator = User::find($ticket->created_by);
+                if ($creator && $creator->email) {
+                    try {
+                        $creator->notify(new TicketStatusChangedNotification($ticket, $oldStatus, $request->status));
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to send status change notification: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+
+        // ส่ง Email แจ้ง Technician เมื่อถูก assign
+        if ($request->has('assigned_to') && $request->assigned_to != $oldAssignee && $request->assigned_to) {
+            if ($this->isEmailNotificationEnabled()) {
+                $assignee = User::find($request->assigned_to);
+                if ($assignee && $assignee->email) {
+                    try {
+                        $assignee->notify(new TicketAssignedNotification($ticket));
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to send assignment notification: ' . $e->getMessage());
+                    }
+                }
+            }
         }
 
         return response()->json($ticket->load(['asset', 'creator', 'assignee', 'approver', 'closer']));
@@ -132,5 +205,12 @@ class TicketController extends Controller
             ->get();
 
         return response()->json($ticket);
+    }
+
+    private function isEmailNotificationEnabled(): bool
+    {
+        $setting = SystemSetting::where('key', 'emailNotifications')->first();
+        if (!$setting) return true; // default enabled
+        return in_array($setting->value, ['1', 'true', true], true);
     }
 }

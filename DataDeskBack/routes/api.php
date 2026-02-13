@@ -8,6 +8,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\DataCenterLogController;
 use App\Http\Controllers\SystemLogController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SystemSettingController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -108,6 +109,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/datacenter/logs/{id}/exit', [DataCenterLogController::class, 'recordExit']);
     Route::put('/datacenter/logs/{id}', [DataCenterLogController::class, 'update']);
     Route::delete('/datacenter/logs/{id}', [DataCenterLogController::class, 'destroy']);
+
+    // System Settings
+    Route::get('/system-settings', [SystemSettingController::class, 'index']);
+    Route::post('/system-settings', [SystemSettingController::class, 'update']);
 
     // System Logs
     Route::get('/system-logs', [SystemLogController::class, 'index']);

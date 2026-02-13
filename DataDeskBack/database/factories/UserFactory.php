@@ -23,9 +23,24 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $company = \App\Models\Company::firstOrNew(['id' => 'C001'], [
+            'name' => 'Default Company',
+        ]);
+        $company->save();
+
+        $branch = \App\Models\Branch::firstOrNew(['id' => 'B001'], [
+            'name' => 'Default Branch',
+            'company_id' => $company->id,
+        ]);
+        $branch->save();
+
         return [
             'name' => fake()->name(),
+            'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
+            'role' => 'user',
+            'company_id' => $company->id,
+            'branch_id' => $branch->id,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),

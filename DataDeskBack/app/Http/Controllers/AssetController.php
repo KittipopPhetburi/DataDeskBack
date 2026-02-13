@@ -15,6 +15,11 @@ class AssetController extends Controller
 
         if ($user->role !== 'super_admin') {
             $query->where('company_id', $user->company_id);
+
+            // Access Control: Filter by branch if user has strict branch
+            if ($user->branch_id) {
+                $query->where('branch_id', $user->branch_id);
+            }
         }
 
         if ($request->has('type')) {
@@ -22,7 +27,10 @@ class AssetController extends Controller
         }
 
         if ($request->has('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
+            // Allow filtering by specific branch if user has access to it
+            if ($user->role === 'super_admin' || !$user->branch_id || $user->branch_id == $request->branch_id) {
+                $query->where('branch_id', $request->branch_id);
+            }
         }
 
         return response()->json($query->orderBy('created_at', 'desc')->get());

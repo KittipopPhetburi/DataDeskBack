@@ -109,6 +109,7 @@ class CompanyController extends Controller
         $branch = Branch::create([
             'id' => $nextId,
             'name' => $request->name,
+            'technician_email' => $request->technician_email,
             'company_id' => $companyId,
         ]);
 
@@ -118,7 +119,7 @@ class CompanyController extends Controller
     public function updateBranch(Request $request, string $companyId, string $branchId)
     {
         $branch = Branch::where('company_id', $companyId)->findOrFail($branchId);
-        $branch->update($request->only('name'));
+        $branch->update($request->only('name', 'technician_email'));
         return response()->json($branch);
     }
 

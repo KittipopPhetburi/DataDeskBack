@@ -15,6 +15,11 @@ class UserController extends Controller
 
         if ($user->role !== 'super_admin') {
             $query->where('company_id', $user->company_id);
+
+            // Access Control: Filter by branch if user has strict branch
+            if ($user->branch_id) {
+                $query->where('branch_id', $user->branch_id);
+            }
         }
 
         return response()->json($query->get()->map(function ($u) {
