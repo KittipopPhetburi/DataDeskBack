@@ -135,6 +135,12 @@ class TicketController extends Controller
         $data['branch_id'] = $data['branch_id'] ?? $user->branch_id;
         $data['status'] = 'open';
 
+        // Handle Image Upload
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('tickets', 'public');
+            $data['images'] = ['storage/' . $path];
+        }
+
         $ticket = Ticket::create($data);
 
         // บันทึกประวัติการสร้าง
