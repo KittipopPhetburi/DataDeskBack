@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/tickets/tracking/{serialNumber}', [TicketController::class, 'tracking']);
+Route::get('/tickets/track-by-id/{ticketId}', [TicketController::class, 'trackById']);
 Route::get('/assets/search/{serialNumber}', [AssetController::class, 'search']);
 
 // Test DB Connection

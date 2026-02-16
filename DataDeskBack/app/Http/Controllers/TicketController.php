@@ -54,14 +54,35 @@ class TicketController extends Controller
         $data = $request->all();
 
         if (empty($data['id'])) {
-            $lastTicket = Ticket::orderBy('id', 'desc')->first();
-            $nextId = 'T001';
-            
-            if ($lastTicket && preg_match('/^T(\d+)$/', $lastTicket->id, $matches)) {
-                $num = intval($matches[1]) + 1;
-                $nextId = 'T' . str_pad($num, 3, '0', STR_PAD_LEFT);
+            // ดึง ticket_prefix จาก Branch ของ user
+            $branch = \App\Models\Branch::find($data['branch_id'] ?? $user->branch_id);
+            $prefix = $branch?->ticket_prefix;
+
+            if ($prefix) {
+                // หา ticket ล่าสุดที่ขึ้นต้นด้วย prefix นี้
+                $lastTicket = Ticket::where('id', 'LIKE', $prefix . '-%')
+                    ->orderByRaw('CAST(SUBSTRING_INDEX(id, "-", -1) AS UNSIGNED) DESC')
+                    ->first();
+
+                $nextNum = 1;
+                if ($lastTicket && preg_match('/-(\d+)$/', $lastTicket->id, $matches)) {
+                    $nextNum = intval($matches[1]) + 1;
+                }
+                $data['id'] = $prefix . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+            } else {
+                // Fallback: ใช้ T001 เหมือนเดิม
+                $lastTicket = Ticket::where('id', 'LIKE', 'T%')
+                    ->whereRaw("id NOT LIKE '%-%'")
+                    ->orderByRaw('CAST(SUBSTRING(id, 2) AS UNSIGNED) DESC')
+                    ->first();
+
+                $nextId = 'T001';
+                if ($lastTicket && preg_match('/^T(\d+)$/', $lastTicket->id, $matches)) {
+                    $num = intval($matches[1]) + 1;
+                    $nextId = 'T' . str_pad($num, 3, '0', STR_PAD_LEFT);
+                }
+                $data['id'] = $nextId;
             }
-            $data['id'] = $nextId;
         }
 
         $data['created_by'] = $user->id;
@@ -205,6 +226,32 @@ class TicketController extends Controller
             ->get();
 
         return response()->json($ticket);
+    }
+
+    // ติดตามสถานะด้วย Ticket ID (ไม่ต้อง auth)
+    public function trackById(string $ticketId)
+    {
+        // 1. Exact match
+        $ticket = Ticket::with(['asset', 'histories.user'])->find($ticketId);
+
+        // 2. Try without dashes (e.g. T-028 -> T028)
+        if (!$ticket) {
+            $normalized = str_replace('-', '', $ticketId);
+            $ticket = Ticket::with(['asset', 'histories.user'])->find($normalized);
+        }
+
+        // 3. Try LIKE search (partial match)
+        if (!$ticket) {
+            $ticket = Ticket::with(['asset', 'histories.user'])
+                ->where('id', 'LIKE', '%' . $ticketId . '%')
+                ->first();
+        }
+
+        if (!$ticket) {
+            return response()->json([], 200);
+        }
+
+        return response()->json([$ticket]);
     }
 
     private function isEmailNotificationEnabled(): bool

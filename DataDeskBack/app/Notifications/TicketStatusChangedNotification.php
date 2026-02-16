@@ -11,6 +11,9 @@ class TicketStatusChangedNotification extends Notification
 {
     use Queueable;
 
+    public $tries = 3;
+    public $backoff = [60, 300];
+
     public function __construct(
         protected Ticket $ticket,
         protected string $oldStatus,

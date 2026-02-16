@@ -12,7 +12,7 @@ class Branch extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'name', 'company_id', 'technician_email',
+        'id', 'name', 'company_id', 'technician_email', 'ticket_prefix',
     ];
 
     public function company(): BelongsTo

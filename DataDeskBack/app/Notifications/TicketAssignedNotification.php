@@ -11,6 +11,9 @@ class TicketAssignedNotification extends Notification
 {
     use Queueable;
 
+    public $tries = 3;
+    public $backoff = [60, 300];
+
     public function __construct(
         protected Ticket $ticket
     ) {}
